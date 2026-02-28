@@ -22,11 +22,11 @@ export default function StatsCards({ stats }: StatsCardsProps) {
     { label: 'Total Referrals', value: stats.totalReferrals, icon: HiOutlineDocumentText, color: 'text-blue-600', bg: 'bg-blue-50' },
     { label: 'Pending Review', value: stats.pendingReferrals, icon: HiOutlineClock, color: 'text-amber-600', bg: 'bg-amber-50' },
     { label: 'Placed This Week', value: stats.placedThisWeek, icon: HiOutlineCheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'Beds Available', value: `${stats.totalBedsAvailable} / ${stats.totalBeds}`, icon: HiOutlineHomeModern, color: 'text-teal-600', bg: 'bg-teal-50' },
-    { label: 'Occupancy Rate', value: `${stats.occupancyRate}%`, icon: HiOutlineChartBar, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { label: 'Beds Available', value: stats.totalBeds > 0 ? `${stats.totalBedsAvailable} / ${stats.totalBeds}` : '0', icon: HiOutlineHomeModern, color: 'text-teal-600', bg: 'bg-teal-50' },
+    { label: 'Occupancy Rate', value: stats.totalBeds > 0 ? `${stats.occupancyRate}%` : '0%', icon: HiOutlineChartBar, color: 'text-indigo-600', bg: 'bg-indigo-50' },
     { label: 'Avg Placement', value: stats.avgPlacementTime, icon: HiOutlineCalendarDays, color: 'text-violet-600', bg: 'bg-violet-50' },
     { label: 'Waitlisted', value: stats.waitlistedClients, icon: HiOutlineQueueList, color: 'text-rose-600', bg: 'bg-rose-50' },
-    { label: 'This Month', value: `+${stats.placedThisWeek * 4}`, icon: HiOutlineArrowTrendingUp, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+    { label: 'This Month', value: 0, icon: HiOutlineArrowTrendingUp, color: 'text-cyan-600', bg: 'bg-cyan-50' },
   ]
 
   return (

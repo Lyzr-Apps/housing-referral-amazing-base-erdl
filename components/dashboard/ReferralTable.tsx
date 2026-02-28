@@ -19,10 +19,13 @@ import {
   HiOutlineFunnel,
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
+  HiOutlineDocumentText,
+  HiOutlineUserPlus,
 } from 'react-icons/hi2'
 
 interface ReferralTableProps {
   referrals: ClientReferral[]
+  onAddReferral?: () => void
 }
 
 const statusStyles: Record<ReferralStatus, string> = {
@@ -54,7 +57,7 @@ const urgencyDots: Record<string, string> = {
 
 const PER_PAGE = 5
 
-export default function ReferralTable({ referrals }: ReferralTableProps) {
+export default function ReferralTable({ referrals, onAddReferral }: ReferralTableProps) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
@@ -76,135 +79,159 @@ export default function ReferralTable({ referrals }: ReferralTableProps) {
       <CardContent className="p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h3 className="text-sm font-semibold text-slate-900">All Referrals</h3>
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative">
-              <HiOutlineMagnifyingGlass className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input
-                placeholder="Search clients..."
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-                className="pl-8 h-8 text-sm w-48 border-slate-200"
-              />
+          {referrals.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative">
+                <HiOutlineMagnifyingGlass className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Search clients..."
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+                  className="pl-8 h-8 text-sm w-48 border-slate-200"
+                />
+              </div>
+              <div className="flex items-center gap-1 overflow-x-auto">
+                <HiOutlineFunnel className="w-4 h-4 text-slate-400 shrink-0" />
+                {['all', 'new', 'in_review', 'accepted', 'placed', 'waitlisted', 'declined', 'discharged'].map((s) => (
+                  <Button
+                    key={s}
+                    variant={statusFilter === s ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => { setStatusFilter(s); setPage(1) }}
+                    className={`h-6 text-[11px] px-2 shrink-0 ${statusFilter === s ? 'bg-teal-600 hover:bg-teal-700' : ''}`}
+                  >
+                    {s === 'all' ? 'All' : statusLabels[s as ReferralStatus]}
+                  </Button>
+                ))}
+              </div>
             </div>
-            <div className="flex items-center gap-1 overflow-x-auto">
-              <HiOutlineFunnel className="w-4 h-4 text-slate-400 shrink-0" />
-              {['all', 'new', 'in_review', 'accepted', 'placed', 'waitlisted', 'declined', 'discharged'].map((s) => (
-                <Button
-                  key={s}
-                  variant={statusFilter === s ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => { setStatusFilter(s); setPage(1) }}
-                  className={`h-6 text-[11px] px-2 shrink-0 ${statusFilter === s ? 'bg-teal-600 hover:bg-teal-700' : ''}`}
-                >
-                  {s === 'all' ? 'All' : statusLabels[s as ReferralStatus]}
-                </Button>
-              ))}
-            </div>
-          </div>
+          )}
         </div>
 
-        <div className="rounded-lg border border-slate-200 overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-slate-50/80">
-                <TableHead className="text-[11px] font-semibold text-slate-600">Client</TableHead>
-                <TableHead className="text-[11px] font-semibold text-slate-600">Urgency</TableHead>
-                <TableHead className="text-[11px] font-semibold text-slate-600">Status</TableHead>
-                <TableHead className="text-[11px] font-semibold text-slate-600">Referred From</TableHead>
-                <TableHead className="text-[11px] font-semibold text-slate-600">Facility</TableHead>
-                <TableHead className="text-[11px] font-semibold text-slate-600">Date</TableHead>
-                <TableHead className="text-[11px] font-semibold text-slate-600">Needs</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginated.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center text-sm text-slate-400 py-8">
-                    No referrals found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                paginated.map((r) => (
-                  <TableRow key={r.id} className="hover:bg-slate-50/50">
-                    <TableCell>
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">{r.clientName}</p>
-                        <p className="text-[11px] text-slate-400">{r.clientId}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5">
-                        <span className={`w-2 h-2 rounded-full ${urgencyDots[r.urgency]}`} />
-                        <span className="text-xs capitalize text-slate-600">{r.urgency}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={`text-[10px] ${statusStyles[r.status]}`}>
-                        {statusLabels[r.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-slate-600">{r.referredFrom}</TableCell>
-                    <TableCell className="text-sm text-slate-600">
-                      {r.assignedFacility || <span className="text-slate-400">--</span>}
-                    </TableCell>
-                    <TableCell className="text-sm text-slate-500">
-                      {new Date(r.dateReferred).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {r.needs.slice(0, 2).map((n) => (
-                          <span key={n} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{n}</span>
-                        ))}
-                        {r.needs.length > 2 && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">+{r.needs.length - 2}</span>
-                        )}
-                      </div>
-                    </TableCell>
+        {referrals.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="p-3 rounded-full bg-slate-100 mb-3">
+              <HiOutlineDocumentText className="w-6 h-6 text-slate-400" />
+            </div>
+            <p className="text-sm font-medium text-slate-600 mb-1">No referral records</p>
+            <p className="text-xs text-slate-400 mb-4 max-w-[260px]">
+              Your referral history will appear here once clients are referred into the system.
+            </p>
+            <Button
+              size="sm"
+              className="gap-1.5 bg-teal-600 hover:bg-teal-700"
+              onClick={onAddReferral}
+            >
+              <HiOutlineUserPlus className="w-4 h-4" />
+              Add Referral
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="rounded-lg border border-slate-200 overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50/80">
+                    <TableHead className="text-[11px] font-semibold text-slate-600">Client</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-slate-600">Urgency</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-slate-600">Status</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-slate-600">Referred From</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-slate-600">Facility</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-slate-600">Date</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-slate-600">Needs</TableHead>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                </TableHeader>
+                <TableBody>
+                  {paginated.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-sm text-slate-400 py-8">
+                        No matching referrals found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    paginated.map((r) => (
+                      <TableRow key={r.id} className="hover:bg-slate-50/50">
+                        <TableCell>
+                          <div>
+                            <p className="text-sm font-medium text-slate-900">{r.clientName}</p>
+                            <p className="text-[11px] text-slate-400">{r.clientId}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full ${urgencyDots[r.urgency]}`} />
+                            <span className="text-xs capitalize text-slate-600">{r.urgency}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={`text-[10px] ${statusStyles[r.status]}`}>
+                            {statusLabels[r.status]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-slate-600">{r.referredFrom}</TableCell>
+                        <TableCell className="text-sm text-slate-600">
+                          {r.assignedFacility || <span className="text-slate-400">--</span>}
+                        </TableCell>
+                        <TableCell className="text-sm text-slate-500">
+                          {new Date(r.dateReferred).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1 max-w-[200px]">
+                            {r.needs.slice(0, 2).map((n) => (
+                              <span key={n} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{n}</span>
+                            ))}
+                            {r.needs.length > 2 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">+{r.needs.length - 2}</span>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
 
-        <div className="flex items-center justify-between mt-3">
-          <p className="text-xs text-slate-500">
-            {filtered.length > 0
-              ? `${(page - 1) * PER_PAGE + 1}-${Math.min(page * PER_PAGE, filtered.length)} of ${filtered.length}`
-              : '0 results'}
-          </p>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 w-7 p-0 border-slate-200"
-              disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              <HiOutlineChevronLeft className="w-3.5 h-3.5" />
-            </Button>
-            {Array.from({ length: totalPages }, (_, i) => (
-              <Button
-                key={i + 1}
-                variant={page === i + 1 ? 'default' : 'outline'}
-                size="sm"
-                className={`h-7 w-7 p-0 text-xs border-slate-200 ${page === i + 1 ? 'bg-teal-600 hover:bg-teal-700' : ''}`}
-                onClick={() => setPage(i + 1)}
-              >
-                {i + 1}
-              </Button>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 w-7 p-0 border-slate-200"
-              disabled={page === totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              <HiOutlineChevronRight className="w-3.5 h-3.5" />
-            </Button>
-          </div>
-        </div>
+            <div className="flex items-center justify-between mt-3">
+              <p className="text-xs text-slate-500">
+                {filtered.length > 0
+                  ? `${(page - 1) * PER_PAGE + 1}-${Math.min(page * PER_PAGE, filtered.length)} of ${filtered.length}`
+                  : '0 results'}
+              </p>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0 border-slate-200"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  <HiOutlineChevronLeft className="w-3.5 h-3.5" />
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <Button
+                    key={i + 1}
+                    variant={page === i + 1 ? 'default' : 'outline'}
+                    size="sm"
+                    className={`h-7 w-7 p-0 text-xs border-slate-200 ${page === i + 1 ? 'bg-teal-600 hover:bg-teal-700' : ''}`}
+                    onClick={() => setPage(i + 1)}
+                  >
+                    {i + 1}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0 border-slate-200"
+                  disabled={page === totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  <HiOutlineChevronRight className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   )

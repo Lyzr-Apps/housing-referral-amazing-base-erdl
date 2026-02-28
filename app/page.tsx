@@ -1,5 +1,6 @@
 'use client'
 
+import { useRef } from 'react'
 import Header from '@/components/dashboard/Header'
 import StatsCards from '@/components/dashboard/StatsCards'
 import BedTracker from '@/components/dashboard/BedTracker'
@@ -17,9 +18,15 @@ import {
 } from '@/components/dashboard/mock-data'
 
 export default function Page() {
+  const intakeRef = useRef<HTMLDivElement>(null)
+
   const pendingCount = referrals.filter(
     (r) => r.status === 'new' || r.status === 'in_review'
   ).length
+
+  const scrollToIntake = () => {
+    intakeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -32,9 +39,9 @@ export default function Page() {
         {/* Incoming Referrals Queue + Intake Form */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2">
-            <ReferralQueue referrals={referrals} />
+            <ReferralQueue referrals={referrals} onAddReferral={scrollToIntake} />
           </div>
-          <div>
+          <div ref={intakeRef}>
             <ClientIntake />
           </div>
         </div>
@@ -51,7 +58,7 @@ export default function Page() {
         </div>
 
         {/* Full Referral History Table */}
-        <ReferralTable referrals={referrals} />
+        <ReferralTable referrals={referrals} onAddReferral={scrollToIntake} />
       </main>
     </div>
   )
