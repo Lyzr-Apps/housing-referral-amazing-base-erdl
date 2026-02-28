@@ -2,42 +2,56 @@
 
 import Header from '@/components/dashboard/Header'
 import StatsCards from '@/components/dashboard/StatsCards'
-import ReferralChart from '@/components/dashboard/ReferralChart'
-import ReferralLink from '@/components/dashboard/ReferralLink'
+import BedTracker from '@/components/dashboard/BedTracker'
+import ReferralQueue from '@/components/dashboard/ReferralQueue'
+import ClientIntake from '@/components/dashboard/ClientIntake'
+import PlacementChart from '@/components/dashboard/PlacementChart'
 import RecentActivity from '@/components/dashboard/RecentActivity'
 import ReferralTable from '@/components/dashboard/ReferralTable'
-import RewardTiers from '@/components/dashboard/RewardTiers'
-import InviteForm from '@/components/dashboard/InviteForm'
-import { stats, referrals, rewardTiers, recentActivity, monthlyData } from '@/components/dashboard/mock-data'
+import {
+  dashboardStats,
+  facilities,
+  referrals,
+  recentActivity,
+  weeklyPlacementData,
+} from '@/components/dashboard/mock-data'
 
 export default function Page() {
+  const pendingCount = referrals.filter(
+    (r) => r.status === 'new' || r.status === 'in_review'
+  ).length
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
+      <Header pendingCount={pendingCount} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {/* Stats Overview */}
-        <StatsCards stats={stats} />
+      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* KPI Stats */}
+        <StatsCards stats={dashboardStats} />
 
-        {/* Chart + Referral Link + Invite */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <ReferralChart data={monthlyData} />
+        {/* Incoming Referrals Queue + Intake Form */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2">
+            <ReferralQueue referrals={referrals} />
+          </div>
+          <div>
+            <ClientIntake />
+          </div>
+        </div>
+
+        {/* Bed Tracker + Weekly Chart */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2">
+            <BedTracker facilities={facilities} />
           </div>
           <div className="space-y-6">
-            <ReferralLink />
-            <InviteForm />
+            <PlacementChart data={weeklyPlacementData} />
+            <RecentActivity activities={recentActivity} />
           </div>
         </div>
 
-        {/* Referral Table */}
+        {/* Full Referral History Table */}
         <ReferralTable referrals={referrals} />
-
-        {/* Activity + Reward Tiers */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <RecentActivity activities={recentActivity} />
-          <RewardTiers tiers={rewardTiers} currentReferrals={stats.totalReferrals} />
-        </div>
       </main>
     </div>
   )

@@ -9,8 +9,8 @@ import { AgentInterceptorProvider } from '@/components/AgentInterceptorProvider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Referral Dashboard',
-  description: 'Track your referrals, rewards, and performance',
+  title: 'Coordinated Entry - Referral & Bed Tracking',
+  description: 'Nonprofit referral management and shelter bed tracking system',
   icons: {
     icon: '/lyzr.png',
   },
