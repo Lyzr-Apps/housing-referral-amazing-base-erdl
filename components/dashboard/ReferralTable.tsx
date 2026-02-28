@@ -55,6 +55,11 @@ const urgencyDots: Record<string, string> = {
   low: 'bg-slate-400',
 }
 
+const bedTypeLabels: Record<string, string> = {
+  workforce: 'Workforce',
+  medical: 'Medical Step-Down',
+}
+
 const PER_PAGE = 5
 
 export default function ReferralTable({ referrals, onAddReferral }: ReferralTableProps) {
@@ -63,10 +68,11 @@ export default function ReferralTable({ referrals, onAddReferral }: ReferralTabl
   const [page, setPage] = useState(1)
 
   const filtered = referrals.filter((r) => {
+    const clientDisplay = `${r.firstName} ${r.lastInitial}`.toLowerCase()
     const matchesSearch =
-      r.clientName.toLowerCase().includes(search.toLowerCase()) ||
-      r.clientId.toLowerCase().includes(search.toLowerCase()) ||
-      r.referredFrom.toLowerCase().includes(search.toLowerCase())
+      clientDisplay.includes(search.toLowerCase()) ||
+      r.referralPartner.toLowerCase().includes(search.toLowerCase()) ||
+      r.id.toLowerCase().includes(search.toLowerCase())
     const matchesStatus = statusFilter === 'all' || r.status === statusFilter
     return matchesSearch && matchesStatus
   })
@@ -135,10 +141,10 @@ export default function ReferralTable({ referrals, onAddReferral }: ReferralTabl
                     <TableHead className="text-[11px] font-semibold text-slate-600">Client</TableHead>
                     <TableHead className="text-[11px] font-semibold text-slate-600">Urgency</TableHead>
                     <TableHead className="text-[11px] font-semibold text-slate-600">Status</TableHead>
-                    <TableHead className="text-[11px] font-semibold text-slate-600">Referred From</TableHead>
-                    <TableHead className="text-[11px] font-semibold text-slate-600">Facility</TableHead>
-                    <TableHead className="text-[11px] font-semibold text-slate-600">Date</TableHead>
-                    <TableHead className="text-[11px] font-semibold text-slate-600">Needs</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-slate-600">Referral Partner</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-slate-600">Bed Type</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-slate-600">Date Referred</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-slate-600">Priority</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -153,37 +159,34 @@ export default function ReferralTable({ referrals, onAddReferral }: ReferralTabl
                       <TableRow key={r.id} className="hover:bg-slate-50/50">
                         <TableCell>
                           <div>
-                            <p className="text-sm font-medium text-slate-900">{r.clientName}</p>
-                            <p className="text-[11px] text-slate-400">{r.clientId}</p>
+                            <p className="text-sm font-medium text-slate-900">{r.firstName} {r.lastInitial}.</p>
+                            {r.phone && <p className="text-[11px] text-slate-400">{r.phone}</p>}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <span className={`w-2 h-2 rounded-full ${urgencyDots[r.urgency]}`} />
-                            <span className="text-xs capitalize text-slate-600">{r.urgency}</span>
-                          </div>
+                          {r.urgency ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-2 h-2 rounded-full ${urgencyDots[r.urgency] || 'bg-slate-400'}`} />
+                              <span className="text-xs capitalize text-slate-600">{r.urgency}</span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 text-xs">--</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className={`text-[10px] ${statusStyles[r.status]}`}>
                             {statusLabels[r.status]}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-sm text-slate-600">{r.referredFrom}</TableCell>
+                        <TableCell className="text-sm text-slate-600">{r.referralPartner}</TableCell>
                         <TableCell className="text-sm text-slate-600">
-                          {r.assignedFacility || <span className="text-slate-400">--</span>}
+                          {r.bedType ? (bedTypeLabels[r.bedType] || r.bedType) : <span className="text-slate-400">--</span>}
                         </TableCell>
                         <TableCell className="text-sm text-slate-500">
                           {new Date(r.dateReferred).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1 max-w-[200px]">
-                            {r.needs.slice(0, 2).map((n) => (
-                              <span key={n} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{n}</span>
-                            ))}
-                            {r.needs.length > 2 && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">+{r.needs.length - 2}</span>
-                            )}
-                          </div>
+                        <TableCell className="text-sm text-slate-500">
+                          {r.waitlistPriority > 0 ? `#${r.waitlistPriority}` : <span className="text-slate-400">--</span>}
                         </TableCell>
                       </TableRow>
                     ))
@@ -208,7 +211,7 @@ export default function ReferralTable({ referrals, onAddReferral }: ReferralTabl
                 >
                   <HiOutlineChevronLeft className="w-3.5 h-3.5" />
                 </Button>
-                {Array.from({ length: totalPages }, (_, i) => (
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => (
                   <Button
                     key={i + 1}
                     variant={page === i + 1 ? 'default' : 'outline'}

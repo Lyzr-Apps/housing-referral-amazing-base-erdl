@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import Header from '@/components/dashboard/Header'
 import StatsCards from '@/components/dashboard/StatsCards'
 import BedTracker from '@/components/dashboard/BedTracker'
@@ -10,21 +10,67 @@ import PlacementChart from '@/components/dashboard/PlacementChart'
 import RecentActivity from '@/components/dashboard/RecentActivity'
 import ReferralTable from '@/components/dashboard/ReferralTable'
 import BedSetup from '@/components/dashboard/BedSetup'
-import { BedRecord, DashboardStats, Facility } from '@/components/dashboard/types'
-import {
-  dashboardStats as initialStats,
-  referrals,
-  recentActivity,
-  weeklyPlacementData,
-} from '@/components/dashboard/mock-data'
+import { BedRecord, ClientReferral, DashboardStats, Facility, ActivityItem } from '@/components/dashboard/types'
 import { HiOutlineViewColumns, HiOutlineWrenchScrewdriver } from 'react-icons/hi2'
 
 type TabId = 'dashboard' | 'bed-setup'
+
+const emptyStats: DashboardStats = {
+  totalReferrals: 0,
+  pendingReferrals: 0,
+  placedThisWeek: 0,
+  totalBedsAvailable: 0,
+  totalBeds: 0,
+  occupancyRate: 0,
+  avgPlacementTime: '--',
+  waitlistedClients: 0,
+}
 
 export default function Page() {
   const intakeRef = useRef<HTMLDivElement>(null)
   const [activeTab, setActiveTab] = useState<TabId>('dashboard')
   const [beds, setBeds] = useState<BedRecord[]>([])
+  const [referrals, setReferrals] = useState<ClientReferral[]>([])
+  const [stats, setStats] = useState<DashboardStats>(emptyStats)
+  const [activities, setActivities] = useState<ActivityItem[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Fetch all data from API
+  const fetchData = useCallback(async () => {
+    try {
+      const [refRes, bedRes, statsRes, actRes] = await Promise.all([
+        fetch('/api/referrals'),
+        fetch('/api/beds'),
+        fetch('/api/stats'),
+        fetch('/api/activity'),
+      ])
+
+      if (refRes.ok) {
+        const data = await refRes.json()
+        setReferrals(data.referrals || [])
+      }
+      if (bedRes.ok) {
+        const data = await bedRes.json()
+        setBeds(data.beds || [])
+      }
+      if (statsRes.ok) {
+        const data = await statsRes.json()
+        setStats(data.stats || emptyStats)
+      }
+      if (actRes.ok) {
+        const data = await actRes.json()
+        setActivities(data.activities || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch data:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
   const pendingCount = referrals.filter(
     (r) => r.status === 'new' || r.status === 'in_review'
@@ -39,15 +85,21 @@ export default function Page() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
-  // Derive stats from beds state
-  const stats: DashboardStats = {
-    ...initialStats,
-    totalBeds: beds.length,
-    totalBedsAvailable: beds.filter((b) => b.status === 'available').length,
-    occupancyRate: beds.length > 0
-      ? Math.round((beds.filter((b) => b.status === 'occupied').length / beds.length) * 100)
-      : 0,
-  }
+  // When beds change locally, also refresh stats
+  const handleBedsChange = useCallback((newBeds: BedRecord[]) => {
+    setBeds(newBeds)
+    fetch('/api/stats').then(res => res.ok ? res.json() : null).then(data => {
+      if (data?.stats) setStats(data.stats)
+    }).catch(() => {})
+    fetch('/api/activity').then(res => res.ok ? res.json() : null).then(data => {
+      if (data?.activities) setActivities(data.activities)
+    }).catch(() => {})
+  }, [])
+
+  // After a referral is created, refresh everything
+  const handleReferralCreated = useCallback(() => {
+    fetchData()
+  }, [fetchData])
 
   // Derive facilities summary from beds for the BedTracker
   const facilities: Facility[] = deriveFacilities(beds)
@@ -93,39 +145,50 @@ export default function Page() {
       </div>
 
       <main className="max-w-[1440px] mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {activeTab === 'dashboard' && (
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-sm text-slate-500">Loading data...</p>
+            </div>
+          </div>
+        ) : (
           <>
-            {/* KPI Stats */}
-            <StatsCards stats={stats} />
+            {activeTab === 'dashboard' && (
+              <>
+                {/* KPI Stats */}
+                <StatsCards stats={stats} />
 
-            {/* Incoming Referrals Queue + Intake Form */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              <div className="xl:col-span-2">
-                <ReferralQueue referrals={referrals} onAddReferral={scrollToIntake} />
-              </div>
-              <div ref={intakeRef}>
-                <ClientIntake />
-              </div>
-            </div>
+                {/* Incoming Referrals Queue + Intake Form */}
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                  <div className="xl:col-span-2">
+                    <ReferralQueue referrals={referrals} onAddReferral={scrollToIntake} />
+                  </div>
+                  <div ref={intakeRef}>
+                    <ClientIntake onReferralCreated={handleReferralCreated} />
+                  </div>
+                </div>
 
-            {/* Bed Tracker + Weekly Chart */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              <div className="xl:col-span-2">
-                <BedTracker facilities={facilities} onAddBeds={goToBedSetup} />
-              </div>
-              <div className="space-y-6">
-                <PlacementChart data={weeklyPlacementData} />
-                <RecentActivity activities={recentActivity} />
-              </div>
-            </div>
+                {/* Bed Tracker + Weekly Chart */}
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                  <div className="xl:col-span-2">
+                    <BedTracker facilities={facilities} onAddBeds={goToBedSetup} />
+                  </div>
+                  <div className="space-y-6">
+                    <PlacementChart data={[]} />
+                    <RecentActivity activities={activities} />
+                  </div>
+                </div>
 
-            {/* Full Referral History Table */}
-            <ReferralTable referrals={referrals} onAddReferral={scrollToIntake} />
+                {/* Full Referral History Table */}
+                <ReferralTable referrals={referrals} onAddReferral={scrollToIntake} />
+              </>
+            )}
+
+            {activeTab === 'bed-setup' && (
+              <BedSetup beds={beds} onBedsChange={handleBedsChange} />
+            )}
           </>
-        )}
-
-        {activeTab === 'bed-setup' && (
-          <BedSetup beds={beds} onBedsChange={setBeds} />
         )}
       </main>
     </div>

@@ -5,20 +5,20 @@ export type FacilityType = 'emergency_shelter' | 'transitional' | 'permanent_sup
 
 export interface ClientReferral {
   id: string
-  clientName: string
-  clientId: string
-  age: number
-  gender: string
-  referredBy: string
-  referredFrom: string
-  status: ReferralStatus
-  urgency: UrgencyLevel
+  firstName: string
+  lastInitial: string
+  phone: string
+  dob: string
+  referralPartner: string
+  bedType: string
+  urgency: string
   dateReferred: string
-  datePlaced?: string
-  assignedFacility?: string
-  assignedBed?: string
-  needs: string[]
-  notes?: string
+  status: ReferralStatus
+  waitlistPriority: number
+  staffNotes: string
+  partnerNotes: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface Facility {

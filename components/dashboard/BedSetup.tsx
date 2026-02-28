@@ -44,11 +44,6 @@ const statusConfig: Record<BedStatus, { label: string; style: string; dot: strin
   maintenance: { label: 'Maintenance', style: 'bg-red-50 text-red-600 border-red-200', dot: 'bg-red-400' },
 }
 
-const wingLabels: Record<string, string> = {
-  workforce: 'Workforce',
-  medical: 'Medical Step-Down',
-}
-
 export default function BedSetup({ beds, onBedsChange }: BedSetupProps) {
   const [showAddForm, setShowAddForm] = useState(false)
   const [successBanner, setSuccessBanner] = useState<string | null>(null)
@@ -63,10 +58,9 @@ export default function BedSetup({ beds, onBedsChange }: BedSetupProps) {
     setTimeout(() => setSuccessBanner(null), 4000)
   }
 
-  const handleCreateDefaults = () => {
+  const handleCreateDefaults = async () => {
     const defaultBeds: BedRecord[] = []
 
-    // Workforce: W1-W8
     for (let i = 1; i <= 8; i++) {
       defaultBeds.push({
         id: `default-w${i}`,
@@ -77,7 +71,6 @@ export default function BedSetup({ beds, onBedsChange }: BedSetupProps) {
       })
     }
 
-    // Medical Step-Down: M1-M4
     for (let i = 1; i <= 4; i++) {
       defaultBeds.push({
         id: `default-m${i}`,
@@ -88,11 +81,24 @@ export default function BedSetup({ beds, onBedsChange }: BedSetupProps) {
       })
     }
 
-    onBedsChange(defaultBeds)
-    showBanner('12 beds created')
+    try {
+      const res = await fetch('/api/beds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bulk: true, beds: defaultBeds }),
+      })
+      if (res.ok) {
+        onBedsChange(defaultBeds)
+        showBanner('12 beds created')
+      }
+    } catch {
+      // fallback to local state
+      onBedsChange(defaultBeds)
+      showBanner('12 beds created')
+    }
   }
 
-  const handleAddBed = (e: React.FormEvent) => {
+  const handleAddBed = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!addForm.bedNumber || !addForm.wing) return
 
@@ -105,17 +111,41 @@ export default function BedSetup({ beds, onBedsChange }: BedSetupProps) {
       status: addForm.status,
     }
 
+    try {
+      await fetch('/api/beds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newBed),
+      })
+    } catch {
+      // continue with local state update
+    }
+
     onBedsChange([...beds, newBed])
     setAddForm({ bedNumber: '', wing: '', status: 'available' })
     setShowAddForm(false)
     showBanner(`Bed ${newBed.bedNumber} added to ${wingName}`)
   }
 
-  const handleDeleteBed = (bedId: string) => {
+  const handleDeleteBed = async (bedId: string) => {
+    try {
+      await fetch(`/api/beds?id=${bedId}`, { method: 'DELETE' })
+    } catch {
+      // continue with local state
+    }
     onBedsChange(beds.filter((b) => b.id !== bedId))
   }
 
-  const handleStatusChange = (bedId: string, newStatus: BedStatus) => {
+  const handleStatusChange = async (bedId: string, newStatus: BedStatus) => {
+    try {
+      await fetch('/api/beds', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: bedId, status: newStatus }),
+      })
+    } catch {
+      // continue with local state
+    }
     onBedsChange(
       beds.map((b) => (b.id === bedId ? { ...b, status: newStatus } : b))
     )
@@ -342,7 +372,6 @@ export default function BedSetup({ beds, onBedsChange }: BedSetupProps) {
   )
 }
 
-// Sub-component for wing tables
 function BedWingTable({
   title,
   beds,

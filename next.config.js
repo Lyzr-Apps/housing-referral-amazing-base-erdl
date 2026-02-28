@@ -18,8 +18,21 @@ const nextConfig = {
     unoptimized: true,
   },
 
+  // Ensure node:sqlite is treated as external on server side
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals = config.externals || []
+      config.externals.push({
+        'node:sqlite': 'commonjs node:sqlite',
+      })
+    }
+    return config
+  },
+
   // Enable experimental features for faster dev
   experimental: {
+    // Allow node:sqlite in API routes (server-side only)
+    serverComponentsExternalPackages: ['node:sqlite'],
     // Optimize package imports for faster builds
     optimizePackageImports: [
       'lucide-react',

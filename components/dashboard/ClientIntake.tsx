@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { HiOutlineUserPlus, HiOutlineCheck } from 'react-icons/hi2'
+import { HiOutlineUserPlus, HiOutlineCheck, HiOutlineExclamationCircle } from 'react-icons/hi2'
 
 const REFERRAL_PARTNERS = [
   'Community Health Center',
@@ -68,8 +68,14 @@ const initialForm: IntakeForm = {
   partnerNotes: '',
 }
 
-export default function ClientIntake() {
+interface ClientIntakeProps {
+  onReferralCreated?: () => void
+}
+
+export default function ClientIntake({ onReferralCreated }: ClientIntakeProps) {
   const [submitted, setSubmitted] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState<IntakeForm>({ ...initialForm })
 
   const handleChange = (field: keyof IntakeForm, value: string) => {
@@ -78,14 +84,36 @@ export default function ClientIntake() {
 
   const isValid = form.firstName && form.lastInitial && form.referralPartner
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isValid) return
-    setSubmitted(true)
-    setTimeout(() => {
-      setSubmitted(false)
-      setForm({ ...initialForm, dateReferred: getTodayISO() })
-    }, 2000)
+    if (!isValid || saving) return
+
+    setSaving(true)
+    setError(null)
+
+    try {
+      const res = await fetch('/api/referrals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to save referral')
+      }
+
+      setSubmitted(true)
+      setTimeout(() => {
+        setSubmitted(false)
+        setForm({ ...initialForm, dateReferred: getTodayISO() })
+        onReferralCreated?.()
+      }, 1500)
+    } catch (err: any) {
+      setError(err.message || 'Failed to save referral')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -96,8 +124,15 @@ export default function ClientIntake() {
           <h3 className="text-sm font-semibold text-slate-900">New Referral Intake</h3>
         </div>
 
+        {error && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200 mb-4">
+            <HiOutlineExclamationCircle className="w-4 h-4 text-red-500 shrink-0" />
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* ── Client Info ── */}
+          {/* Client Info */}
           <div>
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Client Info</p>
             <div className="grid grid-cols-2 gap-3">
@@ -150,7 +185,7 @@ export default function ClientIntake() {
 
           <Separator className="bg-slate-100" />
 
-          {/* ── Referral Info ── */}
+          {/* Referral Info */}
           <div>
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Referral Info</p>
             <div className="grid grid-cols-2 gap-3">
@@ -210,7 +245,7 @@ export default function ClientIntake() {
 
           <Separator className="bg-slate-100" />
 
-          {/* ── Status ── */}
+          {/* Status */}
           <div>
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Status</p>
             <div className="grid grid-cols-2 gap-3">
@@ -245,7 +280,7 @@ export default function ClientIntake() {
 
           <Separator className="bg-slate-100" />
 
-          {/* ── Notes ── */}
+          {/* Notes */}
           <div>
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Notes</p>
             <div className="space-y-3">
@@ -274,17 +309,19 @@ export default function ClientIntake() {
             </div>
           </div>
 
-          {/* ── Submit ── */}
+          {/* Submit */}
           <Button
             type="submit"
             className="w-full gap-2 bg-teal-600 hover:bg-teal-700"
-            disabled={!isValid || submitted}
+            disabled={!isValid || submitted || saving}
           >
             {submitted ? (
               <>
                 <HiOutlineCheck className="w-4 h-4" />
-                Referral Submitted
+                Referral Saved
               </>
+            ) : saving ? (
+              'Saving...'
             ) : (
               <>
                 <HiOutlineUserPlus className="w-4 h-4" />

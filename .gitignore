@@ -37,3 +37,8 @@ next-env.d.ts
 # IDE
 .idea/
 .vscode/
+
+# SQLite database
+/data/*.db
+/data/*.db-wal
+/data/*.db-shm

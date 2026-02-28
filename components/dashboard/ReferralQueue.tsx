@@ -31,6 +31,11 @@ const statusLabels: Record<string, string> = {
   waitlisted: 'Waitlisted',
 }
 
+const bedTypeLabels: Record<string, string> = {
+  workforce: 'Workforce',
+  medical: 'Medical Step-Down',
+}
+
 export default function ReferralQueue({ referrals, onAddReferral }: ReferralQueueProps) {
   const activeReferrals = referrals.filter(
     (r) => r.status === 'new' || r.status === 'in_review' || r.status === 'accepted' || r.status === 'waitlisted'
@@ -68,7 +73,7 @@ export default function ReferralQueue({ referrals, onAddReferral }: ReferralQueu
         ) : (
           <div className="space-y-2">
             {activeReferrals.map((referral) => {
-              const urgency = urgencyConfig[referral.urgency]
+              const urgency = urgencyConfig[referral.urgency] || urgencyConfig.low
               return (
                 <div
                   key={referral.id}
@@ -82,33 +87,34 @@ export default function ReferralQueue({ referrals, onAddReferral }: ReferralQueu
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`w-2 h-2 rounded-full ${urgency.dot} shrink-0`} />
-                        <span className="text-sm font-semibold text-slate-900">{referral.clientName}</span>
-                        <span className="text-[11px] text-slate-400">{referral.clientId}</span>
-                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${urgency.style}`}>
-                          {urgency.label}
-                        </Badge>
+                        <span className="text-sm font-semibold text-slate-900">
+                          {referral.firstName} {referral.lastInitial}.
+                        </span>
+                        {referral.urgency && (
+                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${urgency.style}`}>
+                            {urgency.label}
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
-                        <span>{referral.age}yo {referral.gender}</span>
-                        <span className="text-slate-300">|</span>
-                        <span>From: {referral.referredFrom}</span>
-                        <span className="text-slate-300">|</span>
-                        <span>By: {referral.referredBy}</span>
+                        <span>From: {referral.referralPartner}</span>
+                        {referral.bedType && (
+                          <>
+                            <span className="text-slate-300">|</span>
+                            <span>Bed: {bedTypeLabels[referral.bedType] || referral.bedType}</span>
+                          </>
+                        )}
+                        {referral.phone && (
+                          <>
+                            <span className="text-slate-300">|</span>
+                            <span>{referral.phone}</span>
+                          </>
+                        )}
                       </div>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {referral.needs.map((need) => (
-                          <span
-                            key={need}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium"
-                          >
-                            {need}
-                          </span>
-                        ))}
-                      </div>
-                      {referral.notes && (
+                      {referral.staffNotes && (
                         <p className="text-[11px] text-slate-500 mt-1.5 flex items-start gap-1">
                           <HiOutlineExclamationTriangle className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
-                          {referral.notes}
+                          {referral.staffNotes}
                         </p>
                       )}
                     </div>
